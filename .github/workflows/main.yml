@@ -1,34 +1,48 @@
-name: Build zygisk module
+name: Build
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-        fetch-depth: 0
-    - name: SetupNDK
-      uses: nttld/setup-ndk@v1
-      id: setup-ndk
-      with:
-        ndk-version: r24
-    - name: Build
-      id: build
-      run: |
-        chmod 777 ./build.sh
-        ./build.sh
-    - name: Upload release
-      uses: actions/upload-artifact@v3
-      with:
-        name: zygisk-module-release
-        path: out/magisk-module
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload module
+        uses: actions/upload-artifact@v4
+        with:
+          name: module
+          path: module/build/outputs/apk/release/module-release.apk
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List downloaded files
+        run: ls -R artifacts
